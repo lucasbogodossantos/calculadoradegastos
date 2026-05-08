@@ -1,1 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+
+<meta charset="UTF-8">
+<title>Minha Rota BR</title>
+
+<link rel="stylesheet" href="style.css">
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+</head>
+
+<body>
+
+<header class="topbar">
+
+<div class="logo">MinhaRotaBR</div>
+
+<nav class="menu">
+<a href="#">Home</a>
+<a href="#" onclick="abrirLogin()">Entrar</a>
+<a href="#">Contato</a>
+</nav>
+
+</header>
+
+<section class="hero">
+
+<div class="hero-content">
+
+<h1>CALCULE ROTAS E CUSTOS DE VIAGEM</h1>
+
+<p>Planeje rotas e visualize custos em segundos</p>
+
+<button class="btnHero" onclick="mostrarMapa()">
+CALCULAR CUSTO AGORA
+</button>
+
+</div>
+
+</section>
+
+
+<div id="app">
+
+<div id="map"></div>
+
+<div id="cardsCusto">
+
+<div class="card">
+<span>Distância</span>
+<h2 id="cardDistancia">-</h2>
+</div>
+
+<div class="card">
+<span>Tempo</span>
+<h2 id="cardTempo">-</h2>
+</div>
+
+<div class="card">
+<span>Combustível</span>
+<h2 id="cardCombustivel">-</h2>
+</div>
+
+<div class="card">
+<span>Paradas</span>
+<h2 id="cardParadas">-</h2>
+</div>
+
+<div class="card destaque">
+<span>Custo total</span>
+<h2 id="cardCusto">-</h2>
+</div>
+
+</div>
+
+<div class="painel">
+
+<h3>Planejar viagem</h3>
+
+<label>Veículo</label>
+<select id="listaVeiculos"></select>
+
+<button onclick="abrirCadastroVeiculo()">
+Cadastrar veículo
+</button>
+
+<label>Origem</label>
+<input id="origem">
+
+<label>Destino</label>
+<input id="destino">
+
+<label>Consumo (km/l)</label>
+<input id="consumo" type="number">
+
+<label>Preço combustível</label>
+<input id="preco" type="number" step="0.01">
+
+<button onclick="calcularRota()">
+Calcular custo
+</button>
+
+</div>
+
+</div>
+
+
+<!-- LOGIN -->
+
+<div id="loginModal" class="modal">
+
+<div class="box">
+
+<h2>Login</h2>
+
+<input id="loginEmail" placeholder="Email">
+<input id="loginSenha" type="password" placeholder="Senha">
+
+<button onclick="login()">Entrar</button>
+
+<p>Não possui conta?</p>
+
+<button onclick="abrirCadastro()">Criar conta</button>
+
+</div>
+
+</div>
+
+
+<!-- CADASTRO -->
+
+<div id="cadastroModal" class="modal" style="display:none">
+
+<div class="box">
+
+<h2>Criar conta</h2>
+
+<input id="nome" placeholder="Nome completo">
+<input id="nascimento" type="date">
+<input id="cpf" placeholder="CPF">
+<input id="telefone" placeholder="Telefone">
+<input id="email" placeholder="Email">
+<input id="endereco" placeholder="Endereço">
+<input id="senha" type="password" placeholder="Senha">
+
+<button onclick="cadastrar()">Cadastrar</button>
+<button onclick="voltarLogin()">Voltar</button>
+
+</div>
+
+</div>
+
+
+<!-- VEÍCULO -->
+
+<div id="veiculoModal" class="modal" style="display:none">
+
+<div class="box">
+
+<h2>Cadastrar veículo</h2>
+
+<label>Tipo</label>
+
+<select id="tipoVeiculo" onchange="mudarCampos()">
+<option value="carro">Carro</option>
+<option value="moto">Moto</option>
+<option value="caminhao">Caminhão</option>
+</select>
+
+<input id="placa" placeholder="Placa">
+<input id="marca" placeholder="Marca">
+<input id="modelo" placeholder="Modelo">
+<input id="cor" placeholder="Cor">
+
+<label>Combustível</label>
+
+<select id="combustivel">
+<option>Gasolina</option>
+<option>Etanol</option>
+<option>Diesel</option>
+<option>Flex</option>
+</select>
+
+<div id="camposCaminhao" style="display:none">
+
+<input id="eixos" placeholder="Número de eixos">
+<input id="peso" placeholder="Peso total">
+
+</div>
+
+<button onclick="salvarVeiculo()">Salvar</button>
+<button onclick="fecharCadastroVeiculo()">Fechar</button>
+
+</div>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
 
