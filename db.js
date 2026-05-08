@@ -1,18 +1,18 @@
-const express = require('express');
-const db = require('./db');
+const mysql = require('mysql2');
 
-const app = express();
-app.use(express.json());
-
-app.post('/usuario', (req, res) => {
-  const { nome } = req.body;
-
-  db.query('INSERT INTO usuario (nome) VALUES (?)', [nome], (err) => {
-    if (err) return res.status(500).send(err);
-    res.send('Usuário cadastrado');
-  });
+const db = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: 'a1b2c3',
+  database: 'viagem_db'
 });
 
-app.listen(3306, () => {
-  console.log('Rodando...');
+db.connect((err) => {
+  if (err) {
+    console.error('Erro ao conectar:', err);
+  } else {
+    console.log('Conectado ao banco');
+  }
 });
+
+module.exports = db;
