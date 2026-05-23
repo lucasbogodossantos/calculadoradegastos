@@ -1,311 +1,404 @@
 const API = "http://localhost:3000";
 
-//MAPA
-
+// ─── MAPA ────────────────────────────────────────────────────────────────────
 let map;
 let rotaControle;
 let postosCamada;
+let marcadorOrigem;
+let marcadorDestino;
 
+// ─── INIT ────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  carregarVeiculos();
+  configurarAutocomplete("origem");
+  configurarAutocomplete("destino");
+};
 
-//MOSTRAR MAPA
+// ─── MOSTRAR MAPA ─────────────────────────────────────────────────────────────
+function mostrarMapa() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    abrirLogin();
+    return;
+  }
 
-function mostrarMapa(){
+  document.querySelector(".hero").style.display = "none";
+  document.getElementById("app").style.display = "block";
 
-document.querySelector(".hero").style.display = "none";
-document.getElementById("app").style.display = "block";
+  if (!map) {
+    map = L.map("map").setView([-15.78, -47.93], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "© OpenStreetMap"
+    }).addTo(map);
+    postosCamada = L.layerGroup().addTo(map);
+  }
 
-if(!map){
-
-map = L.map('map').setView([-27.63, -52.27], 6);
-
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{ maxZoom: 19 }
-).addTo(map);
-
-postosCamada = L.layerGroup().addTo(map);
-
+  setTimeout(() => map.invalidateSize(), 200);
 }
 
-setTimeout(() => {
-map.invalidateSize();
-}, 200);
+// ─── AUTOCOMPLETE ─────────────────────────────────────────────────────────────
+function configurarAutocomplete(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
 
+  let debounceTimer;
+  let listEl = document.getElementById(`autocomplete-${inputId}`);
+  if (!listEl) {
+    listEl = document.createElement("ul");
+    listEl.id = `autocomplete-${inputId}`;
+    listEl.className = "autocomplete-list";
+    input.parentNode.style.position = "relative";
+    input.parentNode.appendChild(listEl);
+  }
+
+  input.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    const q = input.value.trim();
+    if (q.length < 3) { listEl.innerHTML = ""; listEl.style.display = "none"; return; }
+
+    debounceTimer = setTimeout(async () => {
+      try {
+        const r = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=br&format=json&addressdetails=1&limit=5`,
+          { headers: { "Accept-Language": "pt-BR" } }
+        );
+        const data = await r.json();
+        listEl.innerHTML = "";
+        if (!data.length) { listEl.style.display = "none"; return; }
+
+        data.forEach(item => {
+          const li = document.createElement("li");
+          li.textContent = item.display_name;
+          li.dataset.lat = item.lat;
+          li.dataset.lon = item.lon;
+          li.addEventListener("click", () => {
+            input.value = item.display_name;
+            input.dataset.lat = item.lat;
+            input.dataset.lon = item.lon;
+            listEl.innerHTML = "";
+            listEl.style.display = "none";
+          });
+          listEl.appendChild(li);
+        });
+        listEl.style.display = "block";
+      } catch (e) {
+        console.error("Autocomplete erro:", e);
+      }
+    }, 400);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!input.contains(e.target) && !listEl.contains(e.target)) {
+      listEl.style.display = "none";
+    }
+  });
 }
 
-
-//LOGIN
-
-function abrirLogin(){
-
-document.getElementById("loginModal").style.display = "flex";
-
+// ─── GEOCODE (fallback se usuário não escolheu da lista) ──────────────────────
+async function geocodificar(texto) {
+  const r = await fetch(
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(texto)}&countrycodes=br&format=json&limit=1`,
+    { headers: { "Accept-Language": "pt-BR" } }
+  );
+  const d = await r.json();
+  if (!d.length) throw new Error(`Não encontrei: ${texto}`);
+  return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), nome: d[0].display_name };
 }
 
-async function login(){
+// ─── CALCULAR ROTA ────────────────────────────────────────────────────────────
+async function calcularRota() {
+  const origemInput  = document.getElementById("origem");
+  const destinoInput = document.getElementById("destino");
+  const consumo      = parseFloat(document.getElementById("consumo").value);
+  const preco        = parseFloat(document.getElementById("preco").value);
 
-let loginValue = document.getElementById("loginEmail").value;
+  if (!origemInput.value || !destinoInput.value) {
+    mostrarToast("Preencha origem e destino", "erro"); return;
+  }
+  if (!consumo || !preco) {
+    mostrarToast("Informe consumo (km/l) e preço do combustível", "erro"); return;
+  }
 
-let senha = document.getElementById("loginSenha").value;
+  const btnCalc = document.querySelector(".btn-calcular");
+  btnCalc.textContent = "Calculando...";
+  btnCalc.disabled = true;
 
-try{
+  try {
+    // Coordenadas
+    let latO = parseFloat(origemInput.dataset.lat);
+    let lonO = parseFloat(origemInput.dataset.lon);
+    let latD = parseFloat(destinoInput.dataset.lat);
+    let lonD = parseFloat(destinoInput.dataset.lon);
 
-const resposta = await fetch(API + "/login", {
+    if (!latO || !lonO) {
+      const g = await geocodificar(origemInput.value);
+      latO = g.lat; lonO = g.lon;
+    }
+    if (!latD || !lonD) {
+      const g = await geocodificar(destinoInput.value);
+      latD = g.lat; lonD = g.lon;
+    }
 
-method:"POST",
+    // Remover rota anterior
+    if (rotaControle) { map.removeControl(rotaControle); rotaControle = null; }
+    if (marcadorOrigem)  { map.removeLayer(marcadorOrigem);  marcadorOrigem  = null; }
+    if (marcadorDestino) { map.removeLayer(marcadorDestino); marcadorDestino = null; }
+    postosCamada.clearLayers();
 
-headers:{
-"Content-Type":"application/json"
-},
+    // Rota via OSRM
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${lonO},${latO};${lonD},${latD}?overview=full&geometries=geojson&steps=true`;
+    const osrmRes = await fetch(osrmUrl);
+    const osrmData = await osrmRes.json();
 
-body: JSON.stringify({
-login: loginValue,
-senha
-})
+    if (!osrmData.routes || !osrmData.routes.length) {
+      mostrarToast("Não foi possível traçar a rota", "erro"); return;
+    }
 
-});
+    const rota      = osrmData.routes[0];
+    const distanciaKm = rota.distance / 1000;
+    const duracaoMin  = rota.duration / 60;
+    const litros      = distanciaKm / consumo;
+    const custoTotal  = litros * preco;
 
-const dados = await resposta.json();
+    // Paradas sugeridas (a cada ~300km)
+    const paradas = Math.max(0, Math.floor(distanciaKm / 300));
 
-if(!resposta.ok){
-alert(dados.mensagem);
-return;
+    // Atualizar cards
+    document.getElementById("cardDistancia").textContent  = distanciaKm.toFixed(1) + " km";
+    document.getElementById("cardTempo").textContent      = formatarTempo(duracaoMin);
+    document.getElementById("cardCombustivel").textContent = litros.toFixed(1) + " L";
+    document.getElementById("cardParadas").textContent    = paradas > 0 ? paradas + " parada(s)" : "Sem paradas";
+    document.getElementById("cardCusto").textContent      = "R$ " + custoTotal.toFixed(2);
+
+    // Desenhar rota no mapa
+    const coords = rota.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+    const polilinha = L.polyline(coords, { color: "#2563eb", weight: 5, opacity: 0.85 }).addTo(map);
+    map.fitBounds(polilinha.getBounds(), { padding: [60, 60] });
+
+    // Ícones personalizados
+    const iconOrigem = L.divIcon({
+      html: `<div class="marker-pin origem"><span>A</span></div>`,
+      className: "", iconSize: [36, 36], iconAnchor: [18, 36]
+    });
+    const iconDestino = L.divIcon({
+      html: `<div class="marker-pin destino"><span>B</span></div>`,
+      className: "", iconSize: [36, 36], iconAnchor: [18, 36]
+    });
+
+    marcadorOrigem  = L.marker([latO, lonO], { icon: iconOrigem  }).addTo(map)
+      .bindPopup(`<b>Origem</b><br>${origemInput.value.split(",")[0]}`).openPopup();
+    marcadorDestino = L.marker([latD, lonD], { icon: iconDestino }).addTo(map)
+      .bindPopup(`<b>Destino</b><br>${destinoInput.value.split(",")[0]}`);
+
+    // Buscar postos no meio do trajeto
+    buscarPostosNoTrajeto(coords, distanciaKm);
+
+    mostrarToast("Rota calculada com sucesso!", "ok");
+
+  } catch (e) {
+    console.error(e);
+    mostrarToast(e.message || "Erro ao calcular rota", "erro");
+  } finally {
+    btnCalc.textContent = "Calcular custo";
+    btnCalc.disabled = false;
+  }
 }
 
-localStorage.setItem("token", dados.token);
-
-alert("Login realizado!");
-
-document.getElementById("loginModal").style.display = "none";
-
-carregarVeiculos();
-
-}catch(erro){
-
-console.log(erro);
-
+// ─── FORMATAR TEMPO ────────────────────────────────────────────────────────────
+function formatarTempo(minutos) {
+  const h = Math.floor(minutos / 60);
+  const m = Math.round(minutos % 60);
+  if (h === 0) return `${m} min`;
+  return `${h}h ${m}min`;
 }
 
+// ─── POSTOS NO TRAJETO ────────────────────────────────────────────────────────
+async function buscarPostosNoTrajeto(coords, distanciaKm) {
+  // Pega ponto médio da rota
+  const meio = coords[Math.floor(coords.length / 2)];
+  const [lat, lon] = meio;
+
+  // Raio baseado na distância
+  const raio = Math.min(Math.max(distanciaKm * 15, 5000), 50000);
+
+  try {
+    const url = `https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];node["amenity"="fuel"](around:${raio},${lat},${lon});out body 20;`;
+    const r = await fetch(url);
+    const d = await r.json();
+
+    if (!d.elements || !d.elements.length) return;
+
+    const iconPosto = L.divIcon({
+      html: `<div class="marker-posto">⛽</div>`,
+      className: "", iconSize: [30, 30], iconAnchor: [15, 15]
+    });
+
+    d.elements.slice(0, 15).forEach(posto => {
+      const nome = posto.tags?.name || posto.tags?.brand || "Posto de Combustível";
+      L.marker([posto.lat, posto.lon], { icon: iconPosto })
+        .addTo(postosCamada)
+        .bindPopup(`<b>⛽ ${nome}</b>`);
+    });
+
+  } catch (e) {
+    console.warn("Não carregou postos:", e);
+  }
 }
 
-
-//CADASTRO
-
-function abrirCadastro(){
-
-document.getElementById("loginModal").style.display = "none";
-
-document.getElementById("cadastroModal").style.display = "flex";
-
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function mostrarToast(msg, tipo = "ok") {
+  let toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.className = "toast " + (tipo === "erro" ? "toast-erro" : "toast-ok");
+  toast.style.display = "block";
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.display = "none"; }, 3500);
 }
 
-function voltarLogin(){
-
-document.getElementById("cadastroModal").style.display = "none";
-
-document.getElementById("loginModal").style.display = "flex";
-
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
+function abrirLogin() {
+  document.getElementById("loginModal").style.display = "flex";
 }
 
-async function cadastrar(){
-
-try{
-
-const resposta = await fetch(API + "/usuario", {
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body: JSON.stringify({
-
-nome: document.getElementById("nome").value,
-
-data_nascimento:
-document.getElementById("nascimento").value,
-
-cpf: document.getElementById("cpf").value,
-
-telefone:
-document.getElementById("telefone").value,
-
-email:
-document.getElementById("email").value,
-
-endereco:
-document.getElementById("endereco").value,
-
-senha:
-document.getElementById("senha").value
-
-})
-
-});
-
-const dados = await resposta.json();
-
-alert(dados.mensagem);
-
-if(resposta.ok){
-
-voltarLogin();
-
+function fecharLogin() {
+  document.getElementById("loginModal").style.display = "none";
 }
 
-}catch(erro){
+async function login() {
+  const loginValue = document.getElementById("loginEmail").value;
+  const senha      = document.getElementById("loginSenha").value;
 
-console.log(erro);
+  try {
+    const resposta = await fetch(API + "/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ login: loginValue, senha })
+    });
+    const dados = await resposta.json();
 
+    if (!resposta.ok) { mostrarToast(dados.mensagem, "erro"); return; }
+
+    localStorage.setItem("token", dados.token);
+    mostrarToast("Login realizado!", "ok");
+    fecharLogin();
+    atualizarNavLogin();
+    carregarVeiculos();
+
+  } catch (e) { console.error(e); }
 }
 
+function logout() {
+  localStorage.removeItem("token");
+  atualizarNavLogin();
+  document.querySelector(".hero").style.display = "flex";
+  document.getElementById("app").style.display = "none";
 }
 
-
-//VEÍCULO
-
-function abrirCadastroVeiculo(){
-
-document.getElementById("veiculoModal").style.display = "flex";
-
+function atualizarNavLogin() {
+  const token = localStorage.getItem("token");
+  const btnEntrar = document.getElementById("btnEntrar");
+  const btnSair   = document.getElementById("btnSair");
+  if (btnEntrar) btnEntrar.style.display = token ? "none"  : "inline";
+  if (btnSair)   btnSair.style.display   = token ? "inline" : "none";
 }
 
-function fecharCadastroVeiculo(){
-
-document.getElementById("veiculoModal").style.display = "none";
-
+// ─── CADASTRO ─────────────────────────────────────────────────────────────────
+function abrirCadastro() {
+  document.getElementById("loginModal").style.display   = "none";
+  document.getElementById("cadastroModal").style.display = "flex";
 }
 
-function mudarCampos(){
-
-let tipo = document.getElementById("tipoVeiculo").value;
-
-document.getElementById("camposCaminhao").style.display =
-(tipo === "caminhao") ? "block" : "none";
-
+function voltarLogin() {
+  document.getElementById("cadastroModal").style.display = "none";
+  document.getElementById("loginModal").style.display    = "flex";
 }
 
-
-async function salvarVeiculo(){
-
-const token = localStorage.getItem("token");
-
-if(!token){
-alert("Faça login primeiro");
-return;
+async function cadastrar() {
+  try {
+    const resposta = await fetch(API + "/usuario", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome:            document.getElementById("nome").value,
+        data_nascimento: document.getElementById("nascimento").value,
+        cpf:             document.getElementById("cpf").value,
+        telefone:        document.getElementById("telefone").value,
+        email:           document.getElementById("email").value,
+        endereco:        document.getElementById("endereco").value,
+        senha:           document.getElementById("senha").value
+      })
+    });
+    const dados = await resposta.json();
+    mostrarToast(dados.mensagem, resposta.ok ? "ok" : "erro");
+    if (resposta.ok) voltarLogin();
+  } catch (e) { console.error(e); }
 }
 
-let tipo = document.getElementById("tipoVeiculo").value;
-
-try{
-
-const resposta = await fetch(API + "/veiculo", {
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json",
-"Authorization":"Bearer " + token
-},
-
-body: JSON.stringify({
-
-tipo,
-
-placa:
-document.getElementById("placa").value,
-
-marca_modelo:
-document.getElementById("marca").value +
-" " +
-document.getElementById("modelo").value,
-
-cor:
-document.getElementById("cor").value,
-
-combustivel:
-document.getElementById("combustivel").value,
-
-numero_eixos:
-tipo === "caminhao"
-? document.getElementById("eixos").value
-: null,
-
-peso_total:
-tipo === "caminhao"
-? document.getElementById("peso").value
-: null
-
-})
-
-});
-
-const dados = await resposta.json();
-
-alert(dados.mensagem);
-
-if(resposta.ok){
-
-carregarVeiculos();
-
-fecharCadastroVeiculo();
-
+// ─── VEÍCULO ──────────────────────────────────────────────────────────────────
+function abrirCadastroVeiculo() {
+  const token = localStorage.getItem("token");
+  if (!token) { mostrarToast("Faça login primeiro", "erro"); return; }
+  document.getElementById("veiculoModal").style.display = "flex";
 }
 
-}catch(erro){
-
-console.log(erro);
-
+function fecharCadastroVeiculo() {
+  document.getElementById("veiculoModal").style.display = "none";
 }
 
+function mudarCampos() {
+  const tipo = document.getElementById("tipoVeiculo").value;
+  document.getElementById("camposCaminhao").style.display =
+    tipo === "caminhao" ? "block" : "none";
 }
 
+async function salvarVeiculo() {
+  const token = localStorage.getItem("token");
+  if (!token) { mostrarToast("Faça login primeiro", "erro"); return; }
 
-//CARREGAR VEÍCULOS 
+  const tipo = document.getElementById("tipoVeiculo").value;
 
-async function carregarVeiculos(){
-
-const token = localStorage.getItem("token");
-
-if(!token) return;
-
-try{
-
-const resposta = await fetch(API + "/veiculos", {
-
-headers:{
-"Authorization":"Bearer " + token
+  try {
+    const resposta = await fetch(API + "/veiculo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+      body: JSON.stringify({
+        tipo,
+        placa:        document.getElementById("placa").value,
+        marca_modelo: document.getElementById("marca").value + " " + document.getElementById("modelo").value,
+        cor:          document.getElementById("cor").value,
+        combustivel:  document.getElementById("combustivel").value,
+        numero_eixos: tipo === "caminhao" ? document.getElementById("eixos").value : null,
+        peso_total:   tipo === "caminhao" ? document.getElementById("peso").value  : null
+      })
+    });
+    const dados = await resposta.json();
+    mostrarToast(dados.mensagem, resposta.ok ? "ok" : "erro");
+    if (resposta.ok) { carregarVeiculos(); fecharCadastroVeiculo(); }
+  } catch (e) { console.error(e); }
 }
 
-});
+async function carregarVeiculos() {
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-const lista = await resposta.json();
-
-let select =
-document.getElementById("listaVeiculos");
-
-select.innerHTML = "";
-
-lista.forEach((v)=>{
-
-let op = document.createElement("option");
-
-op.value = v.id;
-
-op.text =
-v.tipo + " - " + v.marca_modelo;
-
-select.appendChild(op);
-
-});
-
-}catch(erro){
-
-console.log(erro);
-
+  try {
+    const resposta = await fetch(API + "/veiculos", {
+      headers: { "Authorization": "Bearer " + token }
+    });
+    const lista = await resposta.json();
+    const select = document.getElementById("listaVeiculos");
+    select.innerHTML = `<option value="">Selecione um veículo</option>`;
+    lista.forEach(v => {
+      const op = document.createElement("option");
+      op.value = v.id;
+      op.text  = `${v.tipo} — ${v.marca_modelo} (${v.placa})`;
+      select.appendChild(op);
+    });
+  } catch (e) { console.error(e); }
 }
-
-}
-
-window.onload = carregarVeiculos;
