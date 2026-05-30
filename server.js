@@ -18,7 +18,7 @@ app.post('/usuario', async (req, res) => {
   const { nome, data_nascimento, cpf, telefone, email, endereco, senha } = req.body;
 
   if (!nome || !cpf || !email || !senha) {
-    return res.status(400).json({ mensagem: 'Campos obrigatórios: nome, cpf, email, senha' });
+    return res.status(400).json({ mensagem: 'Campos Obrigatórios: nome, cpf, email, senha' });
   }
 
   try {
@@ -33,11 +33,11 @@ app.post('/usuario', async (req, res) => {
       if (err) {
         console.error(err);
         if (err.code === 'ER_DUP_ENTRY') {
-          return res.status(400).json({ mensagem: 'Email ou CPF já cadastrado' });
+          return res.status(400).json({ mensagem: 'Email ou CPF já Cadastrado' });
         }
-        return res.status(500).json({ mensagem: 'Erro ao cadastrar' });
+        return res.status(500).json({ mensagem: 'Erro ao Cadastrar' });
       }
-      res.json({ mensagem: 'Usuário cadastrado com sucesso!' });
+      res.json({ mensagem: 'Usuário Cadastrado com Sucesso!' });
     });
 
   } catch (erro) {
@@ -52,7 +52,7 @@ app.post('/login', (req, res) => {
   const { login, senha } = req.body;
 
   if (!login || !senha) {
-    return res.status(400).json({ mensagem: 'Login e senha são obrigatórios' });
+    return res.status(400).json({ mensagem: 'Login e Senha São Obrigatórios' });
   }
 
   const sql = `SELECT * FROM usuario WHERE email = ? OR cpf = ?`;
@@ -73,7 +73,7 @@ app.post('/login', (req, res) => {
       const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
       if (!senhaValida) {
-        return res.status(401).json({ mensagem: 'Senha incorreta' });
+        return res.status(401).json({ mensagem: 'Usuário ou Senha Inválido' });
       }
 
       const token = jwt.sign(
@@ -83,7 +83,7 @@ app.post('/login', (req, res) => {
       );
 
       res.json({
-        mensagem: 'Login realizado com sucesso!',
+        mensagem: 'Login Realizado com Sucesso!',
         token,
         nome: usuario.nome
       });
