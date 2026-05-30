@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-tema="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,64 +10,67 @@
 </head>
 <body>
 
-<!-- ── HEADER ─────────────────────────────────── -->
+<!-- ══ HEADER ══════════════════════════════════════════════════ -->
 <header class="topbar">
-  <div class="logo">MinhaRotaBR</div>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+      </svg>
+    </div>
+    <span class="logo-text">minha<strong>rota</strong>br</span>
+  </div>
+
   <nav class="menu">
     <a href="#">Home</a>
     <a href="#" id="btnEntrar" onclick="abrirLogin(); return false;" class="btn-nav">Entrar</a>
-    <a href="#" id="btnSair"   onclick="logout(); return false;" style="display:none">Sair</a>
+    <a href="#" id="btnSair"   onclick="logout(); return false;" style="display:none" class="btn-nav btn-nav-out">Sair</a>
+    <button id="btnTema" class="btn-tema" onclick="alternarTema()" title="Alternar tema">🌙</button>
   </nav>
 </header>
 
-<!-- ── HERO ───────────────────────────────────── -->
+<!-- ══ HERO ════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="hero-content">
-    <p class="hero-eyebrow">Planejamento de viagens no Brasil</p>
+    <p class="hero-eyebrow">Planejamento de Viagens no Brasil</p>
     <h1>CALCULE<br>SUA <span>ROTA</span><br>AGORA</h1>
     <p>Insira origem e destino, informe o consumo do seu veículo e veja o custo completo da viagem com postos no trajeto.</p>
-    <button class="btnHero" onclick="mostrarMapa()">
-      ⚡ CALCULAR CUSTO
-    </button>
+    <button class="btnHero" onclick="mostrarMapa()">⚡ CALCULAR CUSTO</button>
   </div>
 </section>
 
-<!-- ── APP ────────────────────────────────────── -->
+<!-- ══ APP ═════════════════════════════════════════════════════ -->
 <div id="app">
   <div id="map"></div>
 
   <!-- CARDS -->
   <div id="cardsCusto">
-    <div class="card">
-      <span>Distância</span>
-      <h2 id="cardDistancia">—</h2>
-    </div>
-    <div class="card">
-      <span>Tempo</span>
-      <h2 id="cardTempo">—</h2>
-    </div>
-    <div class="card">
-      <span>Combustível</span>
-      <h2 id="cardCombustivel">—</h2>
-    </div>
-    <div class="card">
-      <span>Paradas</span>
-      <h2 id="cardParadas">—</h2>
-    </div>
-    <div class="card destaque">
-      <span>Custo total</span>
-      <h2 id="cardCusto">—</h2>
-    </div>
+    <div class="card"><span>Distância</span><h2 id="cardDistancia">—</h2></div>
+    <div class="card"><span>Tempo</span><h2 id="cardTempo">—</h2></div>
+    <div class="card"><span>Combustível</span><h2 id="cardCombustivel">—</h2></div>
+    <div class="card"><span>Paradas</span><h2 id="cardParadas">—</h2></div>
+    <div class="card card-pedagio"><span>Pedágios</span><h2 id="cardPedagios">—</h2></div>
+    <div class="card destaque"><span>Custo total</span><h2 id="cardCusto">—</h2></div>
+  </div>
+
+  <!-- MINI-ÍCONES POI (canto inferior esquerdo) -->
+  <div class="poi-fab">
+    <button id="btnAlimentacao" class="poi-btn" onclick="buscarPOI('restaurant')" title="Alimentação no trajeto">
+      🍽️
+    </button>
+    <button id="btnHospedagem" class="poi-btn" onclick="buscarPOI('hotel')" title="Hospedagem no trajeto">
+      🏨
+    </button>
   </div>
 
   <!-- PAINEL LATERAL -->
   <div class="painel">
-    <h3>Planejar viagem</h3>
+    <h3>Planejar Viagem</h3>
 
     <div class="field-group">
       <label>Veículo</label>
-      <select id="listaVeiculos">
-        <option value="">Selecione um veículo</option>
+      <select id="listaVeiculos" onchange="aoSelecionarVeiculo()">
+        <option value="">Selecione um Veículo</option>
       </select>
     </div>
     <button onclick="abrirCadastroVeiculo()">+ Cadastrar veículo</button>
@@ -79,7 +82,11 @@
       <input id="origem" placeholder="Ex: São Paulo, SP" autocomplete="off">
     </div>
 
-    <div class="field-group">
+    <!-- PARADAS OPCIONAIS -->
+    <div id="paradasContainer"></div>
+    <button class="btn-add-parada" onclick="adicionarParada()">+ Adicionar parada</button>
+
+    <div class="field-group" style="margin-top:10px;">
       <label>Destino</label>
       <input id="destino" placeholder="Ex: Curitiba, PR" autocomplete="off">
     </div>
@@ -89,9 +96,17 @@
       <input id="consumo" type="number" placeholder="Ex: 12" min="1" step="0.5">
     </div>
 
-    <div class="field-group">
-      <label>Preço do combustível (R$/L)</label>
-      <input id="preco" type="number" placeholder="Ex: 5.89" min="0" step="0.01">
+    <!-- PREÇO AUTOMÁTICO -->
+    <div class="preco-auto-box">
+      <div class="preco-auto-header">
+        <span class="preco-auto-label">⛽ Preço do combustível</span>
+        <span class="preco-auto-badge">automático</span>
+      </div>
+      <div class="preco-auto-valor">
+        <span id="precoValor">—</span>
+        <button class="btn-atualizar-preco" onclick="atualizarPrecoManual()" title="Atualizar preço">↻</button>
+      </div>
+      <span id="precoStatus" class="preco-auto-fonte">Selecione um veículo para buscar</span>
     </div>
 
     <button class="btn-calcular" onclick="calcularRota()">Calcular custo</button>
@@ -99,7 +114,7 @@
 </div>
 
 
-<!-- ── MODAL LOGIN ─────────────────────────────── -->
+<!-- ══ MODAL LOGIN ══════════════════════════════════════════════ -->
 <div id="loginModal" class="modal" style="display:none">
   <div class="box">
     <h2>Entrar</h2>
@@ -114,28 +129,27 @@
 </div>
 
 
-<!-- ── MODAL CADASTRO ──────────────────────────── -->
+<!-- ══ MODAL CADASTRO ══════════════════════════════════════════ -->
 <div id="cadastroModal" class="modal" style="display:none">
   <div class="box">
     <h2>Criar conta</h2>
-    <input id="nome"        placeholder="Nome completo">
-    <input id="nascimento"  type="date">
-    <input id="cpf"         placeholder="CPF">
-    <input id="telefone"    placeholder="Telefone">
-    <input id="email"       placeholder="Email">
-    <input id="endereco"    placeholder="Endereço">
-    <input id="senha"       type="password" placeholder="Senha">
+    <input id="nome"       placeholder="Nome completo">
+    <input id="nascimento" type="date">
+    <input id="cpf"        placeholder="CPF">
+    <input id="telefone"   placeholder="Telefone">
+    <input id="email"      placeholder="Email">
+    <input id="endereco"   placeholder="Endereço">
+    <input id="senha"      type="password" placeholder="Senha">
     <button onclick="cadastrar()">Cadastrar</button>
     <button class="btn-secundario" onclick="voltarLogin()">Voltar ao login</button>
   </div>
 </div>
 
 
-<!-- ── MODAL VEÍCULO ───────────────────────────── -->
+<!-- ══ MODAL VEÍCULO ═══════════════════════════════════════════ -->
 <div id="veiculoModal" class="modal" style="display:none">
   <div class="box">
-    <h2>Cadastrar veículo</h2>
-
+    <h2>Cadastrar Veículo</h2>
     <div class="field-group">
       <label>Tipo</label>
       <select id="tipoVeiculo" onchange="mudarCampos()">
@@ -145,11 +159,16 @@
       </select>
     </div>
 
-    <input id="placa"  placeholder="Placa (ex: ABC-1234)">
-    <input id="marca"  placeholder="Marca (ex: Toyota)">
-    <input id="modelo" placeholder="Modelo (ex: Corolla)">
-    <input id="cor"    placeholder="Cor">
+    <!-- Marca com chips de sugestão -->
+    <div class="field-group">
+      <label>Marca</label>
+      <input id="marca" placeholder="Digite ou selecione abaixo" autocomplete="off">
+      <div id="marcasSugeridas" class="marcas-sugeridas"></div>
+    </div>
 
+    <input id="modelo" placeholder="Modelo (ex: Corolla)">
+    <input id="placa"  placeholder="Placa (ex: ABC-1234)">
+    <input id="cor"    placeholder="Cor">
     <div class="field-group">
       <label>Combustível</label>
       <select id="combustivel">
@@ -159,12 +178,10 @@
         <option>Flex</option>
       </select>
     </div>
-
     <div id="camposCaminhao" style="display:none">
       <input id="eixos" placeholder="Número de eixos">
       <input id="peso"  placeholder="Peso total (kg)">
     </div>
-
     <button onclick="salvarVeiculo()">Salvar veículo</button>
     <button class="btn-secundario" onclick="fecharCadastroVeiculo()">Cancelar</button>
   </div>
