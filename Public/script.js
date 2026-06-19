@@ -1,6 +1,6 @@
 const API = "http://localhost:3000";
 
-// ── ESTADO GLOBAL ─────────────────────────────────────────────────────────────
+// ESTADO GLOBAL 
 let map, postosCamada, poiCamada, pedagiosCamada;
 let marcadorOrigem, marcadorDestino;
 let polilinhaAtual = null;
@@ -8,14 +8,14 @@ let paradasCount   = 0;
 let precoCombustivelAtual = null;
 let coordsRota = []; // guarda coords da última rota calculada
 
-// ── MARCAS POR TIPO ───────────────────────────────────────────────────────────
+// MARCAS POR TIPO
 const MARCAS = {
   carro:   ["Chevrolet","Fiat","Volkswagen","Ford","Toyota","Honda","Hyundai","Jeep","Renault","Nissan","Peugeot","Citroën","Mitsubishi","Kia","BMW","Mercedes-Benz","Audi","Volvo","Land Rover","Subaru"],
   moto:    ["Honda","Yamaha","Kawasaki","Suzuki","BMW","Ducati","Harley-Davidson","Royal Enfield","Dafra","Haojue","Shineray"],
   caminhao:["Volkswagen","Mercedes-Benz","Scania","Volvo","Iveco","DAF","MAN","Ford","Agrale","Internacional"]
 };
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
+// INIT 
 window.onload = () => {
   carregarVeiculos();
   configurarAutocomplete("origem");
@@ -24,7 +24,7 @@ window.onload = () => {
   iniciarTema();
 };
 
-// ── TEMA ──────────────────────────────────────────────────────────────────────
+// TEMA
 function iniciarTema() {
   const salvo = localStorage.getItem("tema") || "dark";
   aplicarTema(salvo);
@@ -40,7 +40,7 @@ function alternarTema() {
   aplicarTema(atual === "dark" ? "light" : "dark");
 }
 
-// ── MOSTRAR MAPA ──────────────────────────────────────────────────────────────
+// MOSTRAR MAPA 
 function mostrarMapa() {
   if (!localStorage.getItem("token")) { abrirLogin(); return; }
   document.querySelector(".hero").style.display = "none";
@@ -57,7 +57,7 @@ function mostrarMapa() {
   setTimeout(() => map.invalidateSize(), 200);
 }
 
-// ── AUTOCOMPLETE GENÉRICO ─────────────────────────────────────────────────────
+// AUTOCOMPLETE GENÉRICO 
 function configurarAutocomplete(inputId) {
   const input = document.getElementById(inputId);
   if (!input) return;
@@ -141,7 +141,7 @@ function configurarAutocompleteEl(input) {
 
 function fecharAC(listEl) { listEl.innerHTML = ""; listEl.style.display = "none"; }
 
-// ── MARCAS DO VEÍCULO ─────────────────────────────────────────────────────────
+// MARCAS DO VEÍCULO 
 function filtrarMarcas() {
   const tipo  = document.getElementById("tipoVeiculo").value;
   const input = document.getElementById("marca");
@@ -170,7 +170,7 @@ function filtrarMarcas() {
   lista.style.display = "block";
 }
 
-// ── PARADAS INTERMEDIÁRIAS ────────────────────────────────────────────────────
+// PARADAS INTERMEDIÁRIAS 
 function adicionarParada() {
   const container = document.getElementById("paradasContainer");
   paradasCount++;
@@ -208,7 +208,7 @@ function getParadas() {
   })).filter(p => p.texto);
 }
 
-// ── GEOCODE fallback ──────────────────────────────────────────────────────────
+// GEOCODE fallback 
 async function geocodificar(texto) {
   const r = await fetch(
     `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(texto)}&countrycodes=br&format=json&limit=1`,
@@ -219,7 +219,7 @@ async function geocodificar(texto) {
   return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon) };
 }
 
-// ── PREÇO AUTOMÁTICO ──────────────────────────────────────────────────────────
+// PREÇO AUTOMÁTICO 
 async function buscarPrecoCombustivel(tipoCombustivel) {
   const elStatus = document.getElementById("precoStatus");
   const elValor  = document.getElementById("precoValor");
@@ -277,7 +277,7 @@ async function atualizarPrecoManual() {
   setTimeout(() => { if (btn) btn.style.transform = ""; }, 400);
 }
 
-// ── CALCULAR ROTA ─────────────────────────────────────────────────────────────
+// CALCULAR ROTA 
 async function calcularRota() {
   const origemEl  = document.getElementById("origem");
   const destinoEl = document.getElementById("destino");
@@ -313,14 +313,14 @@ async function calcularRota() {
       }
     }
 
-    // ── 2. Montar waypoints para OSRM ──
+    // 2. Montar waypoints para OSRM
     const waypoints = [
       `${lonO},${latO}`,
       ...paradas.map(p => `${p.lon},${p.lat}`),
       `${lonD},${latD}`
     ].join(";");
 
-    // ── 3. Limpar camadas ──
+    // 3. Limpar camadas
     if (polilinhaAtual)  { map.removeLayer(polilinhaAtual);  polilinhaAtual  = null; }
     if (marcadorOrigem)  { map.removeLayer(marcadorOrigem);  marcadorOrigem  = null; }
     if (marcadorDestino) { map.removeLayer(marcadorDestino); marcadorDestino = null; }
@@ -328,7 +328,7 @@ async function calcularRota() {
     poiCamada.clearLayers();
     pedagiosCamada.clearLayers();
 
-    // ── 4. OSRM ──
+    // 4. OSRM
     const osrmRes  = await fetch(`https://router.project-osrm.org/route/v1/driving/${waypoints}?overview=full&geometries=geojson`);
     const osrmData = await osrmRes.json();
 
@@ -352,7 +352,7 @@ async function calcularRota() {
     document.getElementById("cardPedagios").textContent    = "Buscando...";
     document.getElementById("cardCusto").textContent       = "R$ " + custoTotal.toFixed(2);
 
-    // ── 6. Rota no mapa ──
+    // 6. Rota no mapa 
     coordsRota = rota.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
     polilinhaAtual = L.polyline(coordsRota, { color: "#2563eb", weight: 5, opacity: 0.85 }).addTo(map);
     map.fitBounds(polilinhaAtual.getBounds(), { padding: [70, 70] });
@@ -373,10 +373,10 @@ async function calcularRota() {
       icon: L.divIcon({ html: `<div class="marker-pin destino"><span>B</span></div>`, className:"", iconSize:[36,36], iconAnchor:[18,36] })
     }).addTo(map).bindPopup(`<b>Destino</b><br>${destinoEl.value.split(",")[0]}`);
 
-    // ── 7. Postos em todo o trajeto ──
+    // 7. Postos em todo o trajeto
     buscarPostosTodoTrajeto(coordsRota, distanciaKm);
 
-    // ── 8. Pedágios ──
+    // 8. Pedágios
     buscarPedagios(coordsRota);
 
     mostrarToast("Rota calculada com sucesso!", "ok");
@@ -394,7 +394,7 @@ async function calcularRota() {
   }
 }
 
-// ── POSTOS EM TODO O TRAJETO ──────────────────────────────────────────────────
+// POSTOS EM TODO O TRAJETO 
 // Estratégia: monta UMA ÚNICA query Overpass com várias cláusulas around:,
 // uma para cada ponto amostrado ao longo da rota — igual aos pedágios.
 // Evita o limite de requisições concorrentes da Overpass pública (que fazia
@@ -453,7 +453,7 @@ async function buscarPostosTodoTrajeto(coords, distanciaKm) {
   } catch (e) { console.warn("Postos:", e); }
 }
 
-// ── PEDÁGIOS ──────────────────────────────────────────────────────────────────
+// PEDÁGIOS 
 // Estratégia: usa a polyline real da rota via Overpass `poly:` para buscar
 // toll_booth e barrier=toll somente dentro do corredor da via, sem depender
 // de raio por ponto que erra facilmente.
@@ -461,7 +461,7 @@ async function buscarPedagios(coords) {
   const cardPedagio = document.getElementById("cardPedagios");
 
   // Simplifica a polyline para no máximo 200 pontos (limite da Overpass poly:)
-  // — pega pontos igualmente espaçados
+  // pega pontos igualmente espaçados
   const MAX_POLY = 180;
   let pontosPoly = coords;
   if (coords.length > MAX_POLY) {
@@ -537,7 +537,7 @@ out body;`;
   }
 }
 
-// ── ALIMENTAÇÃO E HOSPEDAGEM (FAB) ────────────────────────────────────────────
+// ALIMENTAÇÃO E HOSPEDAGEM (FAB) 
 // Usa around: em pontos amostrados da rota (sem poly: que não funciona em linha aberta).
 // Processa em lotes paralelos. Aparece direto no mapa, sem modal.
 async function buscarPOI(tipo) {
@@ -649,13 +649,13 @@ async function buscarPOI(tipo) {
   );
 }
 
-// ── FORMATAR TEMPO ────────────────────────────────────────────────────────────
+// FORMATAR TEMPO
 function formatarTempo(min) {
   const h = Math.floor(min / 60), m = Math.round(min % 60);
   return h === 0 ? `${m} min` : `${h}h ${m}min`;
 }
 
-// ── TOAST ─────────────────────────────────────────────────────────────────────
+// TOAST
 function mostrarToast(msg, tipo = "ok") {
   let el = document.getElementById("toast");
   if (!el) { el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
@@ -666,7 +666,7 @@ function mostrarToast(msg, tipo = "ok") {
   el._t = setTimeout(() => { el.style.display = "none"; }, 4000);
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────────────────
+// AUTH 
 function abrirLogin()  { document.getElementById("loginModal").style.display = "flex"; }
 function fecharLogin() { document.getElementById("loginModal").style.display = "none"; }
 
@@ -704,7 +704,7 @@ function atualizarNavLogin() {
   if (bs) bs.style.display = token ? "inline" : "none";
 }
 
-// ── CADASTRO ──────────────────────────────────────────────────────────────────
+// CADASTRO
 function abrirCadastro() {
   document.getElementById("loginModal").style.display    = "none";
   document.getElementById("cadastroModal").style.display = "flex";
@@ -734,7 +734,7 @@ async function cadastrar() {
   } catch (e) { console.error(e); }
 }
 
-// ── VEÍCULO ───────────────────────────────────────────────────────────────────
+// VEÍCULO
 function abrirCadastroVeiculo() {
   if (!localStorage.getItem("token")) { mostrarToast("Faça login primeiro", "erro"); return; }
   document.getElementById("veiculoModal").style.display = "flex";
