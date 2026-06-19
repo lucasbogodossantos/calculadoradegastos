@@ -14,15 +14,13 @@
 <header class="topbar">
   <div class="logo">
     <div class="logo-icon">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 11l19-9-9 19-2-8-8-2z"/>
       </svg>
     </div>
     <span class="logo-text">minha<strong>rota</strong>br</span>
   </div>
-
   <nav class="menu">
-    <a href="#">Home</a>
     <a href="#" id="btnEntrar" onclick="abrirLogin(); return false;" class="btn-nav">Entrar</a>
     <a href="#" id="btnSair"   onclick="logout(); return false;" style="display:none" class="btn-nav btn-nav-out">Sair</a>
     <button id="btnTema" class="btn-tema" onclick="alternarTema()" title="Alternar tema">🌙</button>
@@ -43,7 +41,7 @@
 <div id="app">
   <div id="map"></div>
 
-  <!-- CARDS -->
+  <!-- CARDS — ficam abaixo do painel, não sobrepõem -->
   <div id="cardsCusto">
     <div class="card"><span>Distância</span><h2 id="cardDistancia">—</h2></div>
     <div class="card"><span>Tempo</span><h2 id="cardTempo">—</h2></div>
@@ -51,16 +49,6 @@
     <div class="card"><span>Paradas</span><h2 id="cardParadas">—</h2></div>
     <div class="card card-pedagio"><span>Pedágios</span><h2 id="cardPedagios">—</h2></div>
     <div class="card destaque"><span>Custo total</span><h2 id="cardCusto">—</h2></div>
-  </div>
-
-  <!-- MINI-ÍCONES POI (canto inferior esquerdo) -->
-  <div class="poi-fab">
-    <button id="btnAlimentacao" class="poi-btn" onclick="buscarPOI('restaurant')" title="Alimentação no trajeto">
-      🍽️
-    </button>
-    <button id="btnHospedagem" class="poi-btn" onclick="buscarPOI('hotel')" title="Hospedagem no trajeto">
-      🏨
-    </button>
   </div>
 
   <!-- PAINEL LATERAL -->
@@ -77,18 +65,20 @@
 
     <hr class="divider">
 
+    <!-- ORIGEM -->
     <div class="field-group">
       <label>Origem</label>
-      <input id="origem" placeholder="Ex: São Paulo, SP" autocomplete="off">
+      <input id="origem" placeholder="Ex: Porto Alegre, RS" autocomplete="off">
     </div>
 
-    <!-- PARADAS OPCIONAIS -->
+    <!-- PARADAS INTERMEDIÁRIAS -->
     <div id="paradasContainer"></div>
     <button class="btn-add-parada" onclick="adicionarParada()">+ Adicionar parada</button>
 
-    <div class="field-group" style="margin-top:10px;">
+    <!-- DESTINO -->
+    <div class="field-group">
       <label>Destino</label>
-      <input id="destino" placeholder="Ex: Curitiba, PR" autocomplete="off">
+      <input id="destino" placeholder="Ex: São Paulo, SP" autocomplete="off">
     </div>
 
     <div class="field-group">
@@ -111,8 +101,13 @@
 
     <button class="btn-calcular" onclick="calcularRota()">Calcular custo</button>
   </div>
-</div>
 
+  <!-- ÍCONES ALIMENTAÇÃO E HOSPEDAGEM (canto inferior esquerdo) -->
+  <div class="fab-container">
+    <button class="fab" id="fabAlimentacao" onclick="buscarPOI('alimentacao')" title="Restaurantes no trajeto">🍽️</button>
+    <button class="fab" id="fabHospedagem"  onclick="buscarPOI('hospedagem')"  title="Hospedagem no trajeto">🏨</button>
+  </div>
+</div>
 
 <!-- ══ MODAL LOGIN ══════════════════════════════════════════════ -->
 <div id="loginModal" class="modal" style="display:none">
@@ -127,7 +122,6 @@
     <button class="btn-secundario" onclick="fecharLogin()">Fechar</button>
   </div>
 </div>
-
 
 <!-- ══ MODAL CADASTRO ══════════════════════════════════════════ -->
 <div id="cadastroModal" class="modal" style="display:none">
@@ -145,11 +139,11 @@
   </div>
 </div>
 
-
 <!-- ══ MODAL VEÍCULO ═══════════════════════════════════════════ -->
 <div id="veiculoModal" class="modal" style="display:none">
   <div class="box">
     <h2>Cadastrar Veículo</h2>
+
     <div class="field-group">
       <label>Tipo</label>
       <select id="tipoVeiculo" onchange="mudarCampos()">
@@ -159,16 +153,18 @@
       </select>
     </div>
 
-    <!-- Marca com chips de sugestão -->
-    <div class="field-group">
+    <input id="placa" placeholder="Placa (ex: ABC-1234)">
+
+    <!-- MARCA com sugestões -->
+    <div class="field-group" style="position:relative">
       <label>Marca</label>
-      <input id="marca" placeholder="Digite ou selecione abaixo" autocomplete="off">
-      <div id="marcasSugeridas" class="marcas-sugeridas"></div>
+      <input id="marca" placeholder="Ex: Toyota" autocomplete="off" oninput="filtrarMarcas()">
+      <ul id="marcasSugestoes" class="autocomplete-list"></ul>
     </div>
 
     <input id="modelo" placeholder="Modelo (ex: Corolla)">
-    <input id="placa"  placeholder="Placa (ex: ABC-1234)">
     <input id="cor"    placeholder="Cor">
+
     <div class="field-group">
       <label>Combustível</label>
       <select id="combustivel">
@@ -178,12 +174,25 @@
         <option>Flex</option>
       </select>
     </div>
+
     <div id="camposCaminhao" style="display:none">
-      <input id="eixos" placeholder="Número de eixos">
-      <input id="peso"  placeholder="Peso total (kg)">
+      <input id="eixos" placeholder="Número de eixos" type="number">
+      <input id="peso"  placeholder="Peso total (kg)" type="number">
     </div>
+
     <button onclick="salvarVeiculo()">Salvar veículo</button>
     <button class="btn-secundario" onclick="fecharCadastroVeiculo()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL POI (alimentação / hospedagem) ════════════════════ -->
+<div id="poiModal" class="modal" style="display:none">
+  <div class="box box-poi">
+    <div class="poi-header">
+      <h2 id="poiTitulo">Restaurantes</h2>
+      <button class="btn-fechar-poi" onclick="fecharPOI()">✕</button>
+    </div>
+    <div id="poiLista"></div>
   </div>
 </div>
 
