@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 
-// ── CADASTRO DE USUÁRIO ───────────────────────────────────
+// CADASTRO DE USUÁRIO
 app.post('/usuario', async (req, res) => {
   const { nome, data_nascimento, cpf, telefone, email, endereco, senha } = req.body;
 
@@ -47,7 +47,7 @@ app.post('/usuario', async (req, res) => {
 });
 
 
-// ── LOGIN ─────────────────────────────────────────────────
+// LOGIN 
 app.post('/login', (req, res) => {
   const { login, senha } = req.body;
 
@@ -96,7 +96,7 @@ app.post('/login', (req, res) => {
 });
 
 
-// ── CADASTRO DE VEÍCULO ───────────────────────────────────
+// CADASTRO DE VEÍCULO
 app.post('/veiculo', autenticarToken, (req, res) => {
   const { tipo, placa, marca_modelo, cor, combustivel, numero_eixos, peso_total } = req.body;
   const usuario_id = req.usuario.id;
@@ -130,7 +130,7 @@ app.post('/veiculo', autenticarToken, (req, res) => {
 });
 
 
-// ── LISTAR VEÍCULOS DO USUÁRIO ────────────────────────────
+// LISTAR VEÍCULOS DO USUÁRIO
 app.get('/veiculos', autenticarToken, (req, res) => {
   const usuario_id = req.usuario.id;
 
@@ -146,7 +146,7 @@ app.get('/veiculos', autenticarToken, (req, res) => {
 });
 
 
-// ── DELETAR VEÍCULO ───────────────────────────────────────
+// DELETAR VEÍCULO
 app.delete('/veiculo/:id', autenticarToken, (req, res) => {
   const usuario_id = req.usuario.id;
   const veiculo_id = req.params.id;
@@ -166,7 +166,7 @@ app.delete('/veiculo/:id', autenticarToken, (req, res) => {
 });
 
 
-// ── SALVAR HISTÓRICO DE VIAGEM ────────────────────────────
+// SALVAR HISTÓRICO DE VIAGEM
 app.post('/viagem', autenticarToken, (req, res) => {
   const { veiculo_id, origem, destino, distancia_km, duracao_min, litros, custo_total, km_por_litro, preco_combustivel } = req.body;
   const usuario_id = req.usuario.id;
@@ -190,7 +190,7 @@ app.post('/viagem', autenticarToken, (req, res) => {
 });
 
 
-// ── HISTÓRICO DE VIAGENS ──────────────────────────────────
+// HISTÓRICO DE VIAGENS
 app.get('/viagens', autenticarToken, (req, res) => {
   const usuario_id = req.usuario.id;
 
@@ -213,7 +213,7 @@ app.get('/viagens', autenticarToken, (req, res) => {
 });
 
 
-// ── PERFIL ────────────────────────────────────────────────
+// PERFIL
 app.get('/perfil', autenticarToken, (req, res) => {
   const sql = `SELECT id, nome, email, cpf, telefone, endereco, data_nascimento FROM usuario WHERE id = ?`;
 
@@ -225,7 +225,7 @@ app.get('/perfil', autenticarToken, (req, res) => {
 });
 
 
-// ── SERVIDOR ──────────────────────────────────────────────
+// SERVIDOR
 app.listen(3000, () => {
   console.log('Servidor rodando em http://localhost:3000');
 });
